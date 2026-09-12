@@ -1,0 +1,30 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  doc-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: check this repository's own doc map
+        run: node bin/doc-check.mjs --src bin --docs docs --ext .mjs --exempt doc-map.md
+      - name: check the example
+        run: node bin/doc-check.mjs --root example --src src --docs docs --exempt index.md
+      - name: the clean fixture passes
+        run: node bin/doc-check.mjs --root fixtures/clean --src src --docs docs --ext ts,py,svelte --exempt index.md
+      - name: the broken fixture fails, and reports every problem in it
+        run: |
+          if node bin/doc-check.mjs --root fixtures/broken --src src --docs docs > "$RUNNER_TEMP/out.txt"; then
+            echo "the broken fixture passed, so the checker has stopped checking"
+            exit 1
+          fi
+          grep -q '^5 problem(s)' "$RUNNER_TEMP/out.txt"
